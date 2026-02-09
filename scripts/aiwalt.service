@@ -1,0 +1,41 @@
+# /etc/systemd/system/aiwalt.service
+# ---------------------------------------------------------------------------
+# Systemd unit for running AIWalt as a 24/7 service on Raspberry Pi.
+#
+# Install:
+#   sudo cp scripts/aiwalt.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now aiwalt
+#
+# Logs:
+#   journalctl -u aiwalt -f
+# ---------------------------------------------------------------------------
+
+[Unit]
+Description=AIWalt Voice Assistant
+After=network-online.target sound.target pulseaudio.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/aiwalt
+EnvironmentFile=/home/pi/aiwalt/.env
+ExecStart=/home/pi/aiwalt/.venv/bin/aiwalt
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/pi/aiwalt
+
+# Audio access
+SupplementaryGroups=audio
+
+[Install]
+WantedBy=multi-user.target
