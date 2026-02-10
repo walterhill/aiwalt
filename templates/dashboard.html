@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Inbound Logistics{% endblock %}
+
+{% block content %}
+<!-- Summary Bar -->
+<div class="summary-bar">
+    <div class="summary-card total">
+        <div class="label">Total Shipments</div>
+        <div class="value">{{ total }}</div>
+    </div>
+    <div class="summary-card late">
+        <div class="label">Late</div>
+        <div class="value">{{ late_count }}</div>
+    </div>
+    <div class="summary-card stale">
+        <div class="label">Stale</div>
+        <div class="value">{{ stale_count }}</div>
+    </div>
+    <div class="summary-card at-risk">
+        <div class="label">At Risk</div>
+        <div class="value">{{ at_risk_count }}</div>
+    </div>
+    <div class="summary-card" style="border-left: 3px solid #dc2626;">
+        <div class="label">Need Attention</div>
+        <div class="value" style="color: #dc2626;">{{ total_exceptions }}</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<form class="filters" method="GET" action="{{ url_for('dashboard') }}">
+    <div>
+        <label for="search">Search</label><br>
+        <input type="text" id="search" name="search" value="{{ search }}"
+               placeholder="ID, vendor, PO, origin...">
+    </div>
+    <div>
+        <label for="mode">Mode</label><br>
+        <select id="mode" name="mode">
+            <option value="">All Modes</option>
+            {% for m in all_modes %}
+            <option value="{{ m }}" {% if mode == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="status">Status</label><br>
+        <select id="status" name="status">
+            <option value="">All Statuses</option>
+            {% for st in all_statuses %}
+            <option value="{{ st }}" {% if status == st %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="exception_type">Exception</label><br>
+        <select id="exception_type" name="exception_type">
+            <option value="">All</option>
+            <option value="late" {% if exception_type == 'late' %}selected{% endif %}>Late</option>
+            <option value="stale" {% if exception_type == 'stale' %}selected{% endif %}>Stale</option>
+            <option value="at_risk" {% if exception_type == 'at_risk' %}selected{% endif %}>At Risk</option>
+        </select>
+    </div>
+    <div style="padding-top: 16px;">
+        <label class="check-label">
+            <input type="checkbox" name="exceptions_only" value="1"
+                   {% if exceptions_only %}checked{% endif %}>
+            Exceptions only
+        </label>
+    </div>
+    <div style="padding-top: 16px;">
+        <button type="submit">Filter</button>
+        <a href="{{ url_for('dashboard') }}"><button type="button" class="btn-clear">Clear</button></a>
+    </div>
+</form>
+
+<!-- Results count -->
+<p class="text-muted text-small mb-8">
+    Showing {{ shipments|length }} shipment{{ 's' if shipments|length != 1 else '' }}
+    {% if search or mode or status or exception_type or exceptions_only %}
+    (filtered)
+    {% endif %}
+    — sorted by exception severity
+</p>
+
+<!-- Shipment Table -->
+{% if shipments %}
+<table class="shipment-table">
+    <thead>
+        <tr>
+            <th>Severity</th>
+            <th>Shipment ID</th>
+            <th>Vendor</th>
+            <th>Mode</th>
+            <th>Origin</th>
+            <th>Destination</th>
+            <th>Planned ETA</th>
+            <th>Current ETA</th>
+            <th>Status</th>
+            <th>Exceptions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in shipments %}
+        <tr class="{% if s.has_exceptions %}has-exception{% endif %}
+                    {% if s.severity_score >= 40 %}severity-high
+                    {% elif s.severity_score >= 20 %}severity-medium
+                    {% elif s.severity_score > 0 %}severity-low
+                    {% endif %}
+                    {% if s.status == 'Delivered' %}delivered{% endif %}">
+            <td>
+                {% if s.severity_score > 0 %}
+                <span class="severity-score {% if s.severity_score >= 40 %}high{% elif s.severity_score >= 20 %}medium{% elif s.severity_score > 0 %}low{% else %}none{% endif %}">
+                    {{ s.severity_score }}
+                </span>
+                {% else %}
+                <span class="severity-score none">—</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('shipment_detail', shipment_id=s.shipment_id) }}" class="shipment-id">
+                    {{ s.shipment_id }}
+                </a>
+            </td>
+            <td>{{ s.vendor }}</td>
+            <td><span class="badge badge-mode">{{ s.mode }}</span></td>
+            <td>{{ s.origin }}</td>
+            <td>{{ s.destination }}</td>
+            <td class="text-small">{{ s.planned_eta.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td class="text-small">
+                {{ s.current_eta.strftime('%Y-%m-%d %H:%M') }}
+                {% if s.eta_slip_hours > 24 %}
+                <br><span style="color: var(--late); font-size: 11px;">+{{ s.eta_slip_hours|round(0)|int }}h slip</span>
+                {% endif %}
+            </td>
+            <td>{{ s.status }}</td>
+            <td>
+                {% for e in s.exceptions %}
+                <span class="badge badge-{{ e.type }}">{{ e.type|replace('_', ' ') }}</span>
+                {% endfor %}
+                {% if not s.exceptions %}
+                <span class="badge badge-ok">OK</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>No shipments match your filters.</p>
+    <p class="text-small"><a href="{{ url_for('dashboard') }}">Clear filters</a></p>
+</div>
+{% endif %}
+{% endblock %}

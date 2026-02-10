@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}{{ s.shipment_id }} — Inbound Logistics{% endblock %}
+
+{% block content %}
+<div class="detail-header">
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+        <h2>{{ s.shipment_id }}</h2>
+        <p class="text-muted">{{ s.vendor }} &middot; <span class="badge badge-mode">{{ s.mode }}</span> &middot; {{ s.status }}</p>
+    </div>
+    <div>
+        {% if s.severity_score > 0 %}
+        <span class="severity-score {% if s.severity_score >= 40 %}high{% elif s.severity_score >= 20 %}medium{% else %}low{% endif %}" style="font-size: 28px;">
+            {{ s.severity_score }}
+        </span>
+        <span class="text-muted text-small">severity</span>
+        {% else %}
+        <span class="badge badge-ok" style="font-size: 14px; padding: 4px 12px;">No Exceptions</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Exception Summary -->
+{% if s.exceptions %}
+<div class="detail-card full-width mb-16">
+    <h3>Exceptions</h3>
+    <ul class="exception-list">
+        {% for e in s.exceptions %}
+        <li class="exception-item {{ e.type }}">
+            <div class="exc-header">
+                <span class="badge badge-{{ e.type }}">{{ e.type|replace('_', ' ') }}</span>
+                <span class="exc-severity">Severity: {{ e.severity }}</span>
+            </div>
+            <p>{{ e.reason }}</p>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- AI Features (if enabled) -->
+{% if ai_enabled %}
+<div class="detail-grid mb-16">
+    {% if ai_explanation %}
+    <div class="ai-section">
+        <span class="ai-flag">AI-Generated</span>
+        <h3>Exception Explanation</h3>
+        <pre>{{ ai_explanation }}</pre>
+    </div>
+    {% endif %}
+    {% if ai_summary %}
+    <div class="ai-section">
+        <span class="ai-flag">AI-Generated</span>
+        <h3>Change Summary</h3>
+        <pre>{{ ai_summary }}</pre>
+    </div>
+    {% endif %}
+    {% if ai_vendor_msg %}
+    <div class="ai-section full-width">
+        <span class="ai-flag">AI-Generated</span>
+        <h3>Draft Vendor Follow-Up</h3>
+        <pre>{{ ai_vendor_msg }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Detail Grid -->
+<div class="detail-grid">
+    <!-- ETA vs Plan -->
+    <div class="detail-card">
+        <h3>ETA vs Plan</h3>
+        <div class="detail-row">
+            <span class="label">Planned ETA</span>
+            <span class="value">{{ s.planned_eta.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Current ETA</span>
+            <span class="value {% if s.eta_slip_hours > 24 %}slip{% endif %}">
+                {{ s.current_eta.strftime('%Y-%m-%d %H:%M') }}
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="label">ETA Slip</span>
+            <span class="value {% if s.eta_slip_hours > 24 %}slip{% endif %}">
+                {% if s.eta_slip_hours > 0 %}
+                +{{ s.eta_slip_hours|round(1) }} hours ({{ (s.eta_slip_hours / 24)|round(1) }} days)
+                {% else %}
+                On time
+                {% endif %}
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Status</span>
+            <span class="value">{{ s.status }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Last Update</span>
+            <span class="value">{{ s.last_update.strftime('%Y-%m-%d %H:%M') if s.last_update else 'Never' }}</span>
+        </div>
+    </div>
+
+    <!-- Shipment Info -->
+    <div class="detail-card">
+        <h3>Shipment Info</h3>
+        <div class="detail-row">
+            <span class="label">Vendor</span>
+            <span class="value">{{ s.vendor }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Mode</span>
+            <span class="value">{{ s.mode }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Origin</span>
+            <span class="value">{{ s.origin }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Destination</span>
+            <span class="value">{{ s.destination }}</span>
+        </div>
+    </div>
+
+    <!-- Reference Numbers -->
+    <div class="detail-card">
+        <h3>Reference Numbers</h3>
+        <div class="ref-grid">
+            <div class="ref-item">
+                <div class="ref-label">PO</div>
+                <div class="ref-value">{{ s.references.po or '—' }}</div>
+            </div>
+            <div class="ref-item">
+                <div class="ref-label">ASN</div>
+                <div class="ref-value">{{ s.references.asn or '—' }}</div>
+            </div>
+            <div class="ref-item">
+                <div class="ref-label">Container</div>
+                <div class="ref-value">{{ s.references.container or '—' }}</div>
+            </div>
+            <div class="ref-item">
+                <div class="ref-label">BOL</div>
+                <div class="ref-value">{{ s.references.bol or '—' }}</div>
+            </div>
+            <div class="ref-item">
+                <div class="ref-label">PRO</div>
+                <div class="ref-value">{{ s.references.pro or '—' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Milestone Timeline -->
+    <div class="detail-card">
+        <h3>Milestone Timeline</h3>
+        {% if s.milestones %}
+        <div class="timeline">
+            {% for m in s.milestones|reverse %}
+            <div class="timeline-item">
+                <div class="timeline-event">{{ m.event }}</div>
+                <div class="timeline-meta">
+                    <span>{{ m.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                    {% if m.location %}<span>{{ m.location }}</span>{% endif %}
+                    {% if m.source %}<span class="text-muted">{{ m.source }}</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No milestones recorded.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Raw JSON -->
+<div class="detail-card full-width mt-24">
+    <button class="json-toggle" onclick="toggleJson()">
+        &#9654; Raw JSON (for transparency)
+    </button>
+    <div id="json-content" class="json-content">{{ raw_json }}</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleJson() {
+    const el = document.getElementById('json-content');
+    const btn = el.previousElementSibling;
+    if (el.classList.contains('visible')) {
+        el.classList.remove('visible');
+        btn.innerHTML = '&#9654; Raw JSON (for transparency)';
+    } else {
+        el.classList.add('visible');
+        btn.innerHTML = '&#9660; Raw JSON (for transparency)';
+    }
+}
+</script>
+{% endblock %}

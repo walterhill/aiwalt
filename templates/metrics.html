@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Pilot Metrics — Inbound Logistics{% endblock %}
+
+{% block content %}
+<h2 class="mb-8">Pilot Success Metrics</h2>
+<p class="text-muted mb-16">
+    Operational metrics only. No vanity numbers. Comparing current platform data against pre-pilot baselines.
+    <br>
+    <span class="text-small">Computed from {{ metrics_data.shipments_total }} shipments ({{ metrics_data.shipments_with_exceptions }} with exceptions) at {{ metrics_data.computed_at[:19] }} UTC</span>
+</p>
+
+<div class="metrics-grid">
+    {% for m in metrics_data.metrics %}
+    <div class="metric-card {% if m.operational %}operational{% endif %}">
+        <h4>{{ m.name }}</h4>
+        <p class="metric-desc">{{ m.description }}</p>
+        <div class="metric-values">
+            <div class="metric-current">{{ m.current }}</div>
+            <div class="metric-baseline">
+                Baseline: {% if m.direction == 'down' %}<span>{{ m.baseline }}</span>{% else %}{{ m.baseline }}{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="detail-card mt-24">
+    <h3>What These Metrics Mean</h3>
+    <div class="mt-8" style="font-size: 13px; line-height: 1.8;">
+        <p><strong>Reporting Time Eliminated</strong> — Each flagged shipment is one you don't need to manually research. At ~3 minutes per exception, the platform saves real operator time every day.</p>
+        <p class="mt-8"><strong>Delay Detection Speed</strong> — The platform evaluates every shipment on load. Pre-pilot, delays were caught manually, often 48+ hours late. Now they surface immediately.</p>
+        <p class="mt-8"><strong>Status Questions Reduced</strong> — Every visible exception on the dashboard is an email or Teams message that doesn't need to be sent. Self-service visibility replaces reactive communication.</p>
+        <p class="mt-8"><strong>Exception Coverage</strong> — 100% of loaded shipments are evaluated against configurable thresholds. No manual spot-checking, no gaps.</p>
+    </div>
+</div>
+
+<div class="detail-card mt-16">
+    <h3>Pilot Tracking Approach</h3>
+    <div class="mt-8" style="font-size: 13px; line-height: 1.8;">
+        <p>These metrics are designed to be reviewed weekly during the pilot period. Track them in a simple spreadsheet alongside:</p>
+        <ul style="margin: 8px 0 0 20px;">
+            <li>Number of vendor follow-ups triggered by the platform</li>
+            <li>Corrections to exception flags (false positives)</li>
+            <li>User feedback from operators</li>
+            <li>Threshold adjustments made and why</li>
+        </ul>
+        <p class="mt-8">The goal is not perfect data on day one. The goal is: <strong>"Is this better than what we had yesterday?"</strong></p>
+    </div>
+</div>
+{% endblock %}
